@@ -90,15 +90,14 @@ jobs:
             ENABLE_SUSFS="false"
           fi
           case "$ANDROID_VERSION/$KERNEL_VERSION" in
-            android14/6.1|android15/6.6|android16/6.12) ;;
+            android14/6.1|android15/6.6|android16/6.12|android13/5.15|android14/5.15) ;;
             *)
               if [ "$ENABLE_SUSFS" = "true" ]; then
-                echo "::warning::OnePlus SUSFS supports android14/6.1, android15/6.6, and android16/6.12; disabling for $ANDROID_VERSION/$KERNEL_VERSION."
+                echo "::warning::OnePlus SUSFS supports android14/6.1, android15/6.6, android16/6.12, android13/5.15, android14/5.15; disabling for $ANDROID_VERSION/$KERNEL_VERSION."
               fi
               ENABLE_SUSFS="false"
               ;;
           esac
-          effective_proxy="$USE_PROXY_OPTIMIZATION"
           if [[ "$CPU" == mt* ]]; then
             effective_proxy="false"
             effective_kpm="false"
