@@ -80,9 +80,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
-          effective_kpm="$USE_KPM"
-          effective_lz4kd="$USE_LZ4KD"
+          # 兜底默认值，防止变量未定义崩溃
+          effective_kpm="${USE_KPM:-false}"
+          effective_lz4kd="${USE_LZ4KD:-false}"
+          effective_proxy="${USE_PROXY_OPTIMIZATION:-false}"
+        
           if [ "$KSU_VARIANT" != "SukiSU" ] && [ "$KSU_VARIANT" != "BakaSU" ]; then
             effective_kpm="false"
           fi
@@ -102,6 +104,7 @@ jobs:
             effective_proxy="false"
             effective_kpm="false"
           fi
+
           case "$DEVICE_MANIFEST" in
             oneplus_15) device_name="OnePlus 15"; system_version="ColorOS/OxygenOS 16" ;;
             oneplus_15t) device_name="OnePlus 15T"; system_version="ColorOS/OxygenOS 16" ;;
