@@ -1,9 +1,7 @@
 name: OnePlus 内核构建流程
-
 permissions:
   contents: write
   actions: write
-
 on:
   workflow_call:
     inputs:
@@ -50,13 +48,11 @@ on:
         required: false
         type: boolean
         default: false
-
 jobs:
   build:
     name: "${{ inputs.device_manifest }}-${{ inputs.kernel_version }}-${{ inputs.ksu_variant }}"
     runs-on: ${{ vars.ONEPLUS_SELF_HOSTED == 'false' && 'ubuntu-latest' || (startsWith(vars.ONEPLUS_RUNNER, '[') && fromJSON(vars.ONEPLUS_RUNNER) || vars.ONEPLUS_RUNNER || 'ubuntu-latest') }}
     timeout-minutes: 120
-
     env:
       CPU: ${{ inputs.cpu }}
       DEVICE_MANIFEST: ${{ inputs.device_manifest }}
@@ -74,7 +70,6 @@ jobs:
       CCACHE_NOHASHDIR: "true"
       CCACHE_HARDLINK: "true"
       CCACHE_MAXSIZE: 8G
-
     steps:
       - name: 构建信息摘要
         shell: bash
@@ -84,7 +79,7 @@ jobs:
           effective_kpm="${USE_KPM:-false}"
           effective_lz4kd="${USE_LZ4KD:-false}"
           effective_proxy="${USE_PROXY_OPTIMIZATION:-false}"
-        
+
           if [ "$KSU_VARIANT" != "SukiSU" ] && [ "$KSU_VARIANT" != "BakaSU" ]; then
             effective_kpm="false"
           fi
@@ -151,7 +146,6 @@ jobs:
             printf '%s' "$device_label" |
               sed 's#ColorOS/OxygenOS #COS-OOS#g; s#/#-#g; s# · #_#g; s# #_#g; s#[^A-Za-z0-9._-]#_#g'
           )"
-
           {
             echo "EFFECTIVE_KPM=$effective_kpm"
             echo "EFFECTIVE_USE_LZ4KD=$effective_lz4kd"
@@ -160,7 +154,6 @@ jobs:
             echo "DEVICE_LABEL=$device_label"
             echo "DEVICE_ARTIFACT_ID=$device_artifact_id"
           } >> "$GITHUB_ENV"
-
           echo "========================================"
           echo "       内核构建配置摘要"
           echo "========================================"
@@ -191,7 +184,6 @@ jobs:
           echo "Stock Config  : OnePlus manifest"
           echo "Unicode 绕过  : $USE_UNICODE_BYPASS"
           echo "========================================"
-
       - name: 校验 OnePlus 输入
         shell: bash
         run: |
@@ -217,7 +209,6 @@ jobs:
           if [ "$USE_LZ4KD" = "true" ] && [ "$KERNEL_VERSION" != "5.10" ] && [ "$KERNEL_VERSION" != "5.15" ] && [ "$KERNEL_VERSION" != "6.1" ] && [ "$KERNEL_VERSION" != "6.6" ]; then
             echo "::warning::当前 OnePlus 内核版本不在 lz4kd 支持矩阵内，已关闭 lz4kd。"
           fi
-
       - name: 最大化构建空间
         if: ${{ runner.environment == 'github-hosted' && (inputs.kernel_version == '5.10' || inputs.kernel_version == '5.15' || inputs.kernel_version == '6.12') }}
         uses: easimon/maximize-build-space@master
@@ -228,10 +219,8 @@ jobs:
           remove-android: "true"
           remove-haskell: "true"
           remove-codeql: "true"
-
       - name: 检出 ABK 补丁仓库
         uses: actions/checkout@v6
-
       - name: 安装依赖
         shell: bash
         run: |
@@ -247,7 +236,6 @@ jobs:
               sudo rm -f "$source"
             done < <(sudo grep -RIl 'dl.google.com/linux/chrome' /etc/apt/sources.list.d 2>/dev/null || true)
           }
-
           apt_update_retry() {
             local attempt
             for attempt in 1 2 3; do
@@ -262,7 +250,6 @@ jobs:
             echo "::error::apt-get update 连续失败。"
             return 1
           }
-
           disable_broken_chrome_source
           apt_update_retry
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -yq --no-install-recommends \
@@ -274,7 +261,6 @@ jobs:
             chmod a+x repo
             sudo mv repo /usr/local/bin/repo
           fi
-
       - name: 配置 ccache
         shell: bash
         run: |
@@ -284,7 +270,6 @@ jobs:
           mkdir -p "$CCACHE_DIR"
           ccache -M "$CCACHE_MAXSIZE"
           ccache -z
-
       - name: 恢复 ccache
         uses: actions/cache@v5
         with:
@@ -293,7 +278,6 @@ jobs:
           restore-keys: |
             oneplus-ccache-${{ runner.os }}-${{ inputs.device_manifest }}-${{ inputs.ksu_variant }}-
             oneplus-ccache-${{ runner.os }}-
-
       - name: 同步 OnePlus 内核源码
         shell: bash
         run: |
@@ -329,7 +313,6 @@ jobs:
             return 1
           }
           repo_sync_retry
-
       - name: 准备 KernelSU 和补丁
         shell: bash
         run: |
@@ -337,7 +320,6 @@ jobs:
           WORKSPACE="$GITHUB_WORKSPACE/oneplus_workspace"
           KERNEL_ROOT="$WORKSPACE/kernel_workspace/kernel_platform"
           COMMON_ROOT="$KERNEL_ROOT/common"
-
           rm -f "$COMMON_ROOT"/android/abi_gki_protected_exports_* || true
           rm -f "$KERNEL_ROOT"/msm-kernel/android/abi_gki_protected_exports_* || true
           for script in \
@@ -347,7 +329,6 @@ jobs:
             [ -f "$script" ] || continue
             sed -i 's/ -dirty//g' "$script"
           done
-
           if [ "$KSU_VARIANT" != "None" ]; then
             cd "$KERNEL_ROOT"
             case "$KSU_VARIANT" in
@@ -369,7 +350,6 @@ jobs:
               bash "$GITHUB_WORKSPACE/.github/scripts/ensure-kernelsu-uapi.sh" "$KERNEL_ROOT"
             fi
           fi
-
           cd "$WORKSPACE"
           rm -rf kernel_patches SukiSU_patch susfs4oki
           git clone https://github.com/Xiaomichael/kernel_patches.git --depth=1
@@ -379,17 +359,14 @@ jobs:
               -b "oki-${ANDROID_VERSION}-${KERNEL_VERSION}" \
               --depth=1
           fi
-
           if [ "$USE_BBG" = "true" ] && [ "$EFFECTIVE_KPM" = "false" ]; then
             cd "$COMMON_ROOT"
             curl -fsSL https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh -o setup-bbg.sh
             bash setup-bbg.sh
           fi
-
           cp "$WORKSPACE/kernel_patches/zram_patches/001-lz4.patch" "$COMMON_ROOT/"
           cp "$WORKSPACE/kernel_patches/zram_patches/lz4armv8.S" "$COMMON_ROOT/lib/"
           cp "$WORKSPACE/kernel_patches/zram_patches/002-zstd.patch" "$COMMON_ROOT/"
-
           cd "$KERNEL_ROOT"
           MANUAL_HOOK_PATCH_NAME=""
           if [ "$EFFECTIVE_USE_LZ4KD" = "true" ]; then
@@ -400,7 +377,6 @@ jobs:
             cp "$WORKSPACE/SukiSU_patch/other/zram/zram_patch/${KERNEL_VERSION}/lz4kd.patch" "$COMMON_ROOT/" || true
             cp "$WORKSPACE/SukiSU_patch/other/zram/zram_patch/${KERNEL_VERSION}/lz4k_oplus.patch" "$COMMON_ROOT/" || true
           fi
-
           if [ "$EFFECTIVE_ENABLE_SUSFS" = "true" ]; then
             cp "$WORKSPACE/susfs4oki/kernel_patches/50_add_susfs_in_gki-${ANDROID_VERSION}-${KERNEL_VERSION}.patch" "$COMMON_ROOT/" || true
             cp "$WORKSPACE"/susfs4oki/kernel_patches/fs/* "$COMMON_ROOT/fs/" || true
@@ -432,7 +408,6 @@ jobs:
             fi
             cp "$MANUAL_HOOK_PATCH" "$COMMON_ROOT/$MANUAL_HOOK_PATCH_NAME"
           fi
-
           if [ "$USE_UNICODE_BYPASS" = "true" ]; then
             if [ "$KERNEL_VERSION" = "6.1" ] || [ "$KERNEL_VERSION" = "6.6" ] || [ "$KERNEL_VERSION" = "6.12" ]; then
               cp "$WORKSPACE/kernel_patches/common/unicode_bypass_fix_6.1+.patch" "$COMMON_ROOT/unicode_bypass_fix.patch" || true
@@ -440,7 +415,6 @@ jobs:
               cp "$WORKSPACE/kernel_patches/common/unicode_bypass_fix_6.1-.patch" "$COMMON_ROOT/unicode_bypass_fix.patch" || true
             fi
           fi
-
           cd "$COMMON_ROOT"
           if [ -n "$MANUAL_HOOK_PATCH_NAME" ]; then
             patch -p1 < "$MANUAL_HOOK_PATCH_NAME" || true
@@ -459,25 +433,21 @@ jobs:
             [ -f "50_add_susfs_in_gki-${ANDROID_VERSION}-${KERNEL_VERSION}.patch" ] && \
               patch -p1 < "50_add_susfs_in_gki-${ANDROID_VERSION}-${KERNEL_VERSION}.patch" || true
           fi
-
       - name: 确保 KernelSU ABI 兼容
         if: ${{ inputs.ksu_variant != 'None' }}
         shell: bash
         run: python3 "$GITHUB_WORKSPACE/.github/scripts/ensure-ksu-compat.py" "$GITHUB_WORKSPACE/oneplus_workspace/kernel_workspace/kernel_platform"
-
       - name: 修复 SukiSU SUSFS 源码兼容
-        if: ${{ inputs.ksu_variant == 'SukiSU' }}
+        if: ${{ inputs.ksu_variant == 'SukiSU' && inputs.enable_susfs }}
         shell: bash
         run: |
           set -euo pipefail
           WORKSPACE="$GITHUB_WORKSPACE/oneplus_workspace"
           KERNEL_ROOT="$WORKSPACE/kernel_workspace/kernel_platform"
-
           if [ "$EFFECTIVE_ENABLE_SUSFS" != "true" ]; then
             echo "SUSFS 未启用，跳过 SukiSU SUSFS 兼容修复。"
             exit 0
           fi
-
           KSU_BUILD_DIR=""
           for dir in common/drivers/kernelsu drivers/kernelsu KernelSU/kernel kernel; do
             if [ -d "$KERNEL_ROOT/$dir" ]; then
@@ -485,20 +455,16 @@ jobs:
               break
             fi
           done
-
           if [ -z "$KSU_BUILD_DIR" ]; then
             echo "::error::未找到 SukiSU 源码目录，无法修复 SUSFS 兼容。"
             exit 1
           fi
-
           python3 - "$KSU_BUILD_DIR" <<'PY'
           import sys
           from pathlib import Path
-
           root = Path(sys.argv[1])
           selinux_hide = root / "feature" / "selinux_hide.c"
           rules_c = root / "selinux" / "rules.c"
-
           if selinux_hide.exists():
               path = selinux_hide
               text = path.read_text()
@@ -520,13 +486,11 @@ jobs:
               ]
               for old, new in replacements:
                   text = text.replace(old, new)
-
               if text != original:
                   path.write_text(text)
                   print(f"patched {path}")
               else:
                   print(f"no change for {path}")
-
               final_text = path.read_text()
               forbidden = (
                   "static struct selinux_state fake_state;",
@@ -538,7 +502,7 @@ jobs:
               )
               present = [marker for marker in forbidden if marker in final_text]
               if present:
-                  raise SystemExit(f"{path} still contains non-exported SELinux compatibility symbols: {present}")
+                  raise SystemExit(f"{path} still contains non‑exported SELinux compatibility symbols: {present}")
           elif rules_c.exists():
               path = rules_c
               text = path.read_text()
@@ -573,13 +537,11 @@ jobs:
                   if anchor not in text:
                       raise SystemExit(f"{path} missing insertion anchor: {anchor.strip()}")
                   text = text.replace(anchor, anchor + block, 1)
-
               if text != original:
                   path.write_text(text)
                   print(f"patched {path}")
               else:
                   print(f"no change for {path}")
-
               final_text = path.read_text()
               required = (
                   "struct selinux_policy *backup_sepolicy;",
@@ -593,7 +555,6 @@ jobs:
           else:
               raise SystemExit(f"{root} does not contain a supported SELinux compatibility source file")
           PY
-
       - name: 修复 SukiSU/BakaSU sulog 兼容
         if: ${{ inputs.ksu_variant == 'SukiSU' || inputs.ksu_variant == 'BakaSU' }}
         shell: bash
@@ -601,7 +562,6 @@ jobs:
           set -euo pipefail
           WORKSPACE="$GITHUB_WORKSPACE/oneplus_workspace"
           KERNEL_ROOT="$WORKSPACE/kernel_workspace/kernel_platform"
-
           KSU_BUILD_DIR=""
           for dir in common/drivers/kernelsu drivers/kernelsu KernelSU/kernel; do
             if [ -d "$KERNEL_ROOT/$dir" ]; then
@@ -609,21 +569,17 @@ jobs:
               break
             fi
           done
-
           if [ -z "$KSU_BUILD_DIR" ]; then
             echo "::warning::未找到 SukiSU/BakaSU 编译目录，跳过 sulog 兼容修复。"
             exit 0
           fi
-
           python3 - "$KSU_BUILD_DIR/sulog/event.c" <<'PY'
           import sys
           from pathlib import Path
           import re
-
           path = Path(sys.argv[1])
           if not path.exists():
               raise SystemExit(0)
-
           text = path.read_text()
           marker = "SUSFS uses pointer argv_user; non-SUSFS uses struct user_arg_ptr value"
           new = "\n".join([
@@ -634,7 +590,6 @@ jobs:
               "    pending = ksu_sulog_capture(KSU_SULOG_EVENT_IOCTL_GRANT_ROOT, NULL, *USER_ARG_NULL, gfp);",
               "#endif",
           ])
-
           changed = False
           if marker not in text:
               legacy = re.compile(
@@ -647,7 +602,6 @@ jobs:
               )
               text, replacements = legacy.subn(new, text, count=1)
               changed = replacements == 1
-
               if not changed:
                   for old in (
                       "    pending = ksu_sulog_capture(KSU_SULOG_EVENT_IOCTL_GRANT_ROOT, NULL, USER_ARG_NULL, gfp);",
@@ -658,13 +612,11 @@ jobs:
                           text = text.replace(old, new, 1)
                           changed = True
                           break
-
           if changed:
               path.write_text(text)
               print(f"patched {path}")
           else:
               print(f"no change for {path}")
-
           final_text = path.read_text()
           incompatible = re.search(
               r"pending\s*=\s*ksu_sulog_capture\(\s*KSU_SULOG_EVENT_IOCTL_GRANT_ROOT\s*,\s*"
@@ -676,7 +628,6 @@ jobs:
           if marker in final_text and new not in final_text:
               raise SystemExit(f"{path} contains an incomplete ABK ksu_sulog_capture compatibility block")
           PY
-
           # 为 SukiSU/BakaSU 补齐 SUSFS post-exec su-session fd wrapper 定义。
           # 50_add_susfs 会向 common/fs/exec.c 注入 ksu_handle_post_execveat_sucompat() 调用,
           # 但 SukiSU 源码未随之提供该定义,导致 OnePlus 链接期出现 undefined symbol。
@@ -687,19 +638,15 @@ jobs:
             python3 - "$KSU_BUILD_DIR/feature/sucompat.c" <<'PY'
           import sys
           from pathlib import Path
-
           path = Path(sys.argv[1])
           text = path.read_text()
-
           if "int ksu_handle_post_execveat_sucompat(" in text:
               print(f"no change for {path} (wrapper already present)")
               raise SystemExit(0)
-
           marker = "\n// sucompat: permitted process can execute 'su' to gain root access."
           if marker not in text:
               print(f"no change for {path} (marker absent)")
               raise SystemExit(0)
-
           if '#include "supercall/supercall.h"' not in text:
               include_anchor = '#include "ksu.h" // IWYU pragma: keep\n'
               if include_anchor not in text:
@@ -707,7 +654,6 @@ jobs:
               if include_anchor not in text:
                   raise SystemExit(f"无法定位 {path} 的 supercall.h include 插入点")
               text = text.replace(include_anchor, include_anchor + '#include "supercall/supercall.h"\n', 1)
-
           block = "\n".join([
               "",
               "",
@@ -727,12 +673,10 @@ jobs:
               "#endif",
               "",
           ])
-
           path.write_text(text.replace(marker, block + marker, 1))
           print(f"patched {path} (SUSFS post-exec su-session fd wrapper)")
           PY
           fi
-
       - name: 修复 SukiSU/BakaSU android16-6.12 源码兼容
         if: ${{ (inputs.ksu_variant == 'SukiSU' || inputs.ksu_variant == 'BakaSU') && inputs.android_version == 'android16' && inputs.kernel_version == '6.12' }}
         shell: bash
@@ -740,7 +684,6 @@ jobs:
           set -euo pipefail
           KERNEL_ROOT="$GITHUB_WORKSPACE/oneplus_workspace/kernel_workspace/kernel_platform"
           cd "$KERNEL_ROOT"
-
           KSU_BUILD_DIR=""
           for dir in common/drivers/kernelsu drivers/kernelsu KernelSU/kernel; do
             if [ -d "$dir" ]; then
@@ -748,19 +691,15 @@ jobs:
               break
             fi
           done
-
           if [ -z "$KSU_BUILD_DIR" ]; then
             echo "::error::未找到实际 SukiSU/BakaSU 编译目录"
             exit 1
           fi
-
           python3 - "$KSU_BUILD_DIR" <<'PY'
           import sys
           from pathlib import Path
-
           ksu_dir = Path(sys.argv[1])
           changed = False
-
           netlink_h = Path("common/include/linux/netlink.h")
           super_access_c = ksu_dir / "kpm/super_access.c"
           if super_access_c.exists() and netlink_h.exists():
@@ -772,7 +711,6 @@ jobs:
                       super_access_c.write_text(text.replace(line, "", 1))
                       changed = True
                       print("已移除 android16-6.12 不存在的 netlink_kernel_cfg.cb_mutex 成员探测")
-
           lsm_hooks_h = Path("common/include/linux/lsm_hooks.h")
           lsm_hook_c = ksu_dir / "hook/lsm_hook.c"
           if lsm_hook_c.exists() and lsm_hooks_h.exists():
@@ -814,11 +752,9 @@ jobs:
                       lsm_hook_c.write_text(text)
                       changed = True
                       print("已适配 android16-6.12 security_add_hooks() 的 struct lsm_id 参数")
-
           if not changed:
               print("SukiSU/BakaSU android16-6.12 专项兼容修复无需修改。")
           PY
-
       - name: 注入 SukiSU/BakaSU KPM Kconfig
         if: ${{ inputs.use_kpm && (inputs.ksu_variant == 'SukiSU' || inputs.ksu_variant == 'BakaSU') }}
         shell: bash
@@ -826,7 +762,6 @@ jobs:
           set -euo pipefail
           WORKSPACE="$GITHUB_WORKSPACE/oneplus_workspace"
           KERNEL_ROOT="$WORKSPACE/kernel_workspace/kernel_platform"
-
           KSU_KERNEL_DIR=""
           for dir in common/drivers/kernelsu drivers/kernelsu KernelSU/kernel kernel; do
             if [ -f "$KERNEL_ROOT/$dir/Kconfig" ]; then
@@ -834,22 +769,18 @@ jobs:
               break
             fi
           done
-
           if [ -z "$KSU_KERNEL_DIR" ]; then
             echo "::error::未找到 $KSU_VARIANT Kconfig，无法注入 KPM Kconfig 符号。"
             exit 1
           fi
-
           {
             echo "ABK_KPM_KCONFIG_DIR=$KSU_KERNEL_DIR"
             echo "ABK_KPM_KCONFIG_PATH=$KSU_KERNEL_DIR/Kconfig"
           } >> "$GITHUB_ENV"
-
           python3 - "$KSU_KERNEL_DIR/Kconfig" "$GITHUB_ENV" <<'PY'
           from pathlib import Path
           import re
           import sys
-
           path = Path(sys.argv[1])
           github_env = Path(sys.argv[2])
           text = path.read_text()
@@ -860,7 +791,6 @@ jobs:
                   handle.write("ABK_KPM_KCONFIG_READY=true\n")
               print(f"{path} 已包含 KPM Kconfig 符号")
               raise SystemExit(0)
-
           lines = [
               "",
               'menu "KernelSU - KPM"',
@@ -872,24 +802,20 @@ jobs:
               "endmenu",
           ]
           block = "\n".join(lines)
-
           marker = "\nendmenu\n"
           if marker in text:
               text = text.rsplit(marker, 1)[0].rstrip() + "\n" + block + marker
           else:
               text = text.rstrip() + "\n" + block + "\n"
           path.write_text(text)
-
           final_text = path.read_text()
           if not pattern.search(final_text):
               raise SystemExit(f"{path} 注入后仍缺少 config KPM")
-
           with github_env.open("a", encoding="utf-8") as handle:
               handle.write("ABK_KPM_KCONFIG_STATUS=injected\n")
               handle.write("ABK_KPM_KCONFIG_READY=true\n")
           print(f"已注入 {path} 的 KPM Kconfig 符号")
           PY
-
       - name: 配置 defconfig
         shell: bash
         run: |
@@ -902,7 +828,6 @@ jobs:
           kpm_kconfig_ready="${ABK_KPM_KCONFIG_READY:-false}"
           kpm_kconfig_path="${ABK_KPM_KCONFIG_PATH:-}"
           test -f "$DEFCONFIG_PATH"
-
           if [ "$KSU_VARIANT" != "None" ]; then
             if [ "$EFFECTIVE_ENABLE_SUSFS" = "true" ]; then
               cat >> "$DEFCONFIG_PATH" <<'EOF'
@@ -929,13 +854,11 @@ jobs:
           EOF
             fi
           fi
-
           cat >> "$DEFCONFIG_PATH" <<'EOF'
           CONFIG_TMPFS_XATTR=y
           CONFIG_TMPFS_POSIX_ACL=y
           CONFIG_HEADERS_INSTALL=n
           EOF
-
           kpm_config_supported="false"
           if [ "$KSU_VARIANT" = "SukiSU" ] || [ "$KSU_VARIANT" = "BakaSU" ]; then
             if [ "$kpm_kconfig_ready" = "true" ] && [ -f "$kpm_kconfig_path" ]; then
@@ -949,7 +872,6 @@ jobs:
               done
             fi
           fi
-
           if [ "$EFFECTIVE_KPM" = "true" ] && [ "$kpm_config_supported" = "true" ]; then
             echo "CONFIG_KPM=y" >> "$DEFCONFIG_PATH"
             case "$kpm_kconfig_status" in
@@ -999,7 +921,7 @@ jobs:
             echo "CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y" >> "$DEFCONFIG_PATH"
           fi
           if [ "$EFFECTIVE_PROXY_OPTIMIZATION" = "true" ]; then
-              cat >> "$DEFCONFIG_PATH" <<'EOF'
+            cat >> "$DEFCONFIG_PATH" <<'EOF'
           CONFIG_BPF_STREAM_PARSER=y
           CONFIG_NETFILTER_XT_MATCH_ADDRTYPE=y
           CONFIG_NETFILTER_XT_SET=y
@@ -1032,7 +954,6 @@ jobs:
             grep -q '^CONFIG_LTO_CLANG_THIN=y' "$DEFCONFIG_PATH" || echo 'CONFIG_LTO_CLANG_THIN=y' >> "$DEFCONFIG_PATH"
           fi
           sed -i 's/check_defconfig//' "$COMMON_ROOT/build.config.gki" || true
-
       - name: 编译内核
         shell: bash
         run: |
@@ -1041,12 +962,10 @@ jobs:
           KERNEL_ROOT="$WORKSPACE/kernel_workspace/kernel_platform"
           COMMON_ROOT="$WORKSPACE/kernel_workspace/kernel_platform/common"
           cd "$COMMON_ROOT"
-
           export PATH="/usr/lib/ccache:$PATH"
           export KBUILD_BUILD_USER="abk"
           export KBUILD_BUILD_HOST="abk"
           export KBUILD_BUILD_VERSION=1
-
           KSU_KCFLAGS=()
           if [ "$KSU_VARIANT" = "Official" ] && [ -d "$KERNEL_ROOT/KernelSU/uapi" ]; then
             KSU_KCFLAGS=(
@@ -1084,7 +1003,6 @@ jobs:
               ;;
           esac
           ccache -s
-
       - name: 打包 AnyKernel3
         shell: bash
         run: |
@@ -1093,7 +1011,6 @@ jobs:
           cd "$WORKSPACE"
           git clone https://github.com/Xiaomichael/AnyKernel3 --depth=1
           rm -rf AnyKernel3/.git
-
           IMAGE_PATH="$(find "$WORKSPACE/kernel_workspace/kernel_platform/common/out" -name Image | head -n 1)"
           if [ -z "$IMAGE_PATH" ]; then
             echo "::error::编译完成后未找到 Image"
@@ -1101,7 +1018,6 @@ jobs:
           fi
           cp "$IMAGE_PATH" AnyKernel3/Image
           cp "$IMAGE_PATH" Image
-
           if [ "$EFFECTIVE_KPM" = "true" ]; then
             mkdir -p kpm_patch_temp
             cd kpm_patch_temp
@@ -1113,7 +1029,6 @@ jobs:
             cd "$WORKSPACE"
             rm -rf kpm_patch_temp
           fi
-
           case "$KSU_VARIANT" in
             None) variant_label="Kernel_Only" ;;
             SukiSU) variant_label="SukiSU_Ultra" ;;
@@ -1134,7 +1049,6 @@ jobs:
           cd "$WORKSPACE"
           echo "ONEPLUS_ARTIFACT_NAME=$artifact_name" >> "$GITHUB_ENV"
           echo "ONEPLUS_IMAGE_ARTIFACT_NAME=$image_artifact_name" >> "$GITHUB_ENV"
-
       - name: 上传 AnyKernel3 产物
         uses: actions/upload-artifact@v6
         with:
@@ -1144,7 +1058,6 @@ jobs:
             LICENSE
             THIRD_PARTY_NOTICES.md
           if-no-files-found: error
-
       - name: 上传内核 Image
         uses: actions/upload-artifact@v6
         with:
